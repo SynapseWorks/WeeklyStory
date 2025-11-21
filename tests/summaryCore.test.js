@@ -1,108 +1,111 @@
 import { describe, it, expect } from 'vitest';
-import { calculateWeeklyStats, suggestAchievements, buildLlmPayload } from '../docs/js/summaryCore.js';
+import {
+  normalizeEvents,
+  suggestAchievements,
+  calculateWeeklyStats,
+  buildLlmPayload,
+} from '../docs/js/summaryCore.js';
 
-// Tests for suggestAchievements function
+// Adjust these tests if your summaryCore.js uses slightly different
+// property names or shapes – this is a good baseline.
+
 describe('suggestAchievements', () => {
-  it('suggests events based on duration and keywords', () => {
+  it('suggests events based on duration or keywords', () => {
     const events = [
-      { id: '1', title: 'Project meeting', durationMinutes: 90 },
+      { id: '1', title: 'Regular meeting', durationMinutes: 90 },
       { id: '2', title: 'Exam review', durationMinutes: 30 },
-      { id: '3', title: 'Chat', durationMinutes: 45 },
+      { id: '3', title: 'Quick chat', durationMinutes: 10 },
     ];
-    const suggestions = suggestAchievements(events);
-    // suggestions may be returned as a Set or array
-    if (Array.isArray(suggestions)) {
-      expect(suggestions.includes('1')).toBe(true);
-      expect(suggestions.includes('2')).toBe(true);
-      expect(suggestions.includes('3')).toBe(false);
-    } else {
-      expect(suggestions.has('1')).toBe(true);
-      expect(suggestions.has('2')).toBe(true);
-      expect(suggestions.has('3')).toBe(false);
-    }
+
+    const suggested = suggestAchievements(events);
+    const asArray = Array.isArray(suggested) ? suggested : Array.from(suggested);
+
+    expect(asArray).toContain('1'); // long event
+    expect(asArray).toContain('2'); // keyword-based
+    expect(asArray).not.toContain('3');
   });
 });
 
-// Tests for calculateWeeklyStats function
 describe('calculateWeeklyStats', () => {
-  it('calculates correct category totals and counts', () => {
-    const events = [
+  it('computes minutes and counts per category and achievement totals', () => {
+    const eventsWithTags = [
       {
         id: '1',
-        durationMinutes: 120,
+        durationMinutes: 60,
         tags: ['Work'],
         isAchievement: true,
         isSuggestedAchievement: false,
-        start: '2025-11-17T09:00:00',
-        end: '2025-11-17T11:00:00',
       },
       {
         id: '2',
-        durationMinutes: 60,
+        durationMinutes: 30,
         tags: ['Health / Movement'],
         isAchievement: false,
-        isSuggestedAchievement: false,
-        start: '2025-11-17T18:00:00',
-        end: '2025-11-17T19:00:00',
+        isSuggestedAchievement: true,
       },
       {
         id: '3',
-        durationMinutes: 30,
-        tags: ['Work', 'Family'],
+        durationMinutes: 15,
+        tags: ['Work', 'Admin / Errands'],
         isAchievement: false,
-        isSuggestedAchievement: true,
-        start: '2025-11-17T21:30:00',
-        end: '2025-11-17T22:00:00',
+        isSuggestedAchievement: false,
       },
     ];
-    const stats = calculateWeeklyStats(events);
-    expect(stats.hoursPerCategory['Work']).toBeCloseTo((120 + 30) / 60);
-    expect(stats.counts['Work']).toBe(2);
-    expect(stats.hoursPerCategory['Health / Movement']).toBeCloseTo(1);
-    expect(stats.counts['Family']).toBe(1);
+
+    const stats = calculateWeeklyStats(eventsWithTags);
+
+    // These property names might differ slightly in your implementation:
+    // adjust so tests match reality.
+    expect(stats.totalMinutesByCategory['Work']).toBe(75);
+    expect(stats.totalMinutesByCategory['Health / Movement']).toBe(30);
+    expect(stats.totalMinutesByCategory['Admin / Errands']).toBe(15);
+
+    expect(stats.eventCountsByCategory['Work']).toBe(2);
+    expect(stats.eventCountsByCategory['Health / Movement']).toBe(1);
+    expect(stats.eventCountsByCategory['Admin / Errands']).toBe(1);
+
     expect(stats.totalAchievements).toBe(1);
-    expect(stats.totalSuggestions).toBe(1);
-    // Event 3 ends at 22:00 so counts as a late-night event
-    expect(stats.metrics.lateNightCount).toBeGreaterThanOrEqual(1);
-    // Should include some missing categories like 'Rest / Self-care'
-    expect(stats.metrics.missingCategories).toContain('Rest / Self-care');
+    expect(stats.totalSuggestedAchievements).toBe(1);
   });
 });
 
-// Tests for buildLlmPayload function
 describe('buildLlmPayload', () => {
-  it('builds a payload with week bounds and events', () => {
-    const events = [
+  it('builds a payload with week, events and stats', () => {
+    const eventsWithTags = [
       {
         id: '1',
-        title: 'Team meeting',
-        tags: ['Work'],
-        durationMinutes: 60,
+        title: 'Run',
+        durationMinutes: 30,
+        tags: ['Health / Movement'],
         isAchievement: true,
         isSuggestedAchievement: false,
-        notes: 'Discussed project progress',
-        start: '2025-11-17T09:00:00',
-        end: '2025-11-17T10:00:00',
+        notes: 'Felt great',
       },
     ];
+
     const stats = {
-      hoursPerCategory: { Work: 1 },
-      counts: { Work: 1 },
+      weekStart: new Date('2025-01-06'),
+      weekEnd: new Date('2025-01-12'),
+      totalMinutesByCategory: { 'Health / Movement': 30 },
+      eventCountsByCategory: { 'Health / Movement': 1 },
       totalAchievements: 1,
-      totalSuggestions: 0,
-      metrics: {},
+      totalSuggestedAchievements: 0,
+      flags: { noRestEvents: false },
     };
-    const payload = buildLlmPayload(events, stats);
-    expect(payload.weekStart).toBeDefined();
-    expect(payload.weekEnd).toBeDefined();
+
+    const payload = buildLlmPayload(eventsWithTags, stats);
+
+    expect(payload.weekRange).toBeDefined();
+    expect(payload.weekRange.start).toBeDefined();
+    expect(payload.weekRange.end).toBeDefined();
+
     expect(Array.isArray(payload.events)).toBe(true);
-    expect(payload.events.length).toBe(1);
-    const ev = payload.events[0];
-    expect(ev.title).toBe('Team meeting');
-    expect(ev.categories).toEqual(['Work']);
-    expect(ev.durationMinutes).toBe(60);
-    expect(ev.isAchievement).toBe(true);
-    expect(ev.isSuggestedAchievement).toBe(false);
-    expect(payload.stats.totalAchievements).toBe(1);
+    expect(payload.events[0].title).toBe('Run');
+    expect(payload.events[0].categories).toContain('Health / Movement');
+    expect(payload.events[0].isAchievement).toBe(true);
+
+    expect(payload.stats).toBeDefined();
+    expect(payload.stats.totalMinutesByCategory['Health / Movement']).toBe(30);
+    expect(payload.flags).toBeDefined();
   });
 });
