@@ -2,6 +2,7 @@
   "name": "weekly-story",
   "version": "1.0.0",
   "description": "A static web application that turns your weekly calendar into a narrative.",
+  "type": "module",
   "scripts": {
     "test": "vitest"
   },
