@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekly Story</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <header>
+    <h1>Weekly Story</h1>
+    <p>Turn your calendar into a story of your week.</p>
+    <nav>
+      <button id="google-signin">Sign in with Google</button>
+      <button id="google-signout" class="hidden">Sign out</button>
+      <button id="prev-week">Previous Week</button>
+      <span id="current-week"></span>
+      <button id="next-week">Next Week</button>
+      <button id="generate-story">Generate Story</button>
+      <button id="settings-button">Settings</button>
+    </nav>
+  </header>
+  <main>
+    <section id="events-section">
+      <h2>Events</h2>
+      <div id="events-list">
+        <!-- Events will be rendered here -->
+      </div>
+    </section>
+    <section id="stats-section">
+      <h2>Weekly Stats</h2>
+      <div id="stats-container">
+        <!-- Stats will be rendered here -->
+      </div>
+    </section>
+    <section id="story-section">
+      <h2>Weekly Highlights</h2>
+      <div id="weekly-summary">
+        <!-- LLM summary goes here -->
+      </div>
+      <h3>Talking Points</h3>
+      <ul id="talking-points"></ul>
+      <h3>Sneaky Bad Habits & Suggestions</h3>
+      <ul id="bad-habits"></ul>
+    </section>
+  </main>
+  <!-- Settings modal -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Settings</h2>
+      <label for="openai-key">OpenAI API Key:</label>
+      <input type="password" id="openai-key">
+      <button id="save-openai-key">Save</button>
+      <button id="close-settings">Close</button>
+    </div>
+  </div>
+  <script type="module" src="js/calendarApi.js"></script>
+  <script type="module" src="js/summaryCore.js"></script>
+  <script type="module" src="js/llmClient.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
